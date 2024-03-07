@@ -22835,9 +22835,10 @@ const mediaSoupClient = require('mediasoup-client')
 
 const socket = io("/mediasoup")
 
-socket.on('connection-success', (data) => {
-    console.log(data)
+socket.on('connection-success', ({ socketId, existsProducer}) => {
+    console.log("Inside the connection-success", socketId, existsProducer)
 })
+
 
 let device;
 let rtpCapabilities;
@@ -22845,6 +22846,7 @@ let producerTransport;
 let consumerTransport;
 let producer;
 let consumer;
+let isProducer = false;
 
 let params = {
     // mediasoup params
@@ -22871,7 +22873,7 @@ let params = {
     }
   }
 
-const streamSuccess = async (stream) => {
+const streamSuccess = (stream) => {
     localVideo.srcObject = stream;
 
     console.log("Inside the streamSuccess",stream )
@@ -22882,11 +22884,13 @@ const streamSuccess = async (stream) => {
         track,
         ...params
     }
+
+    goConnect(true);
 }
 
 
 const getLocalStream = () => {
-    navigator.getUserMedia({
+    navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
             width: {
@@ -22898,21 +22902,36 @@ const getLocalStream = () => {
                 max: 1080,
             },
         }
-    }, streamSuccess, error => {
-        console.log('error', error.message)
     })
+    .then(streamSuccess)
+    .catch(err => console.log(err.message))
 }
 
+const goConsume = () => {
+    goConnect(false);
+}
+
+const goConnect = (producerOrConsumer) => {
+    isProducer = producerOrConsumer;
+    device === undefined ? getRtpCapabilities() : goCreateTransport()
+}
+
+const goCreateTransport = () => {
+    isProducer ? createSendTransport() : createRecvTransport();
+}
 
 const createDevice = async () => {
     try {
 
         device = new mediaSoupClient.Device();
         console.log('Device created', device);
+        console.log(rtpCapabilities)
 
         await device.load({ routerRtpCapabilities: rtpCapabilities });
         
-        console.log('RTP Capabilities', rtpCapabilities);
+        console.log('Device RTP Capabilities', rtpCapabilities);
+
+        goCreateTransport();
 
     } catch (error) {
         console.log(error);
@@ -22924,11 +22943,15 @@ const createDevice = async () => {
 }
 
 
-const getRtpCapabilities = async () => {
-    socket.emit('getRtpCapabilities', (data) => {
+const getRtpCapabilities = () => {
+    socket.emit('createRoom', (data) => {
+
     console.log('getRtpCapabilities',data)
+
       rtpCapabilities = data.rtpCapabilities  
+      createDevice();
     })
+
 }
 
 const createSendTransport = () => {
@@ -22974,6 +22997,8 @@ const createSendTransport = () => {
                 errback(error);
             }
         })
+
+        connectSendTransport();
 
     })
 
@@ -23029,6 +23054,8 @@ const createRecvTransport = async () => {
                 errback(error);
             }
         })
+
+        connectRecvTransport();
     })
 };
 
@@ -23063,10 +23090,5 @@ const connectRecvTransport = async () => {
 }
 
 btnLocalVideo.addEventListener('click', getLocalStream)
-btnRtpCapabilities.addEventListener('click', getRtpCapabilities)
-btnDevice.addEventListener('click', createDevice)
-btnCreateSendTransport.addEventListener('click', createSendTransport)
-btnConnectSendTransport.addEventListener('click', connectSendTransport)
-btnRecvSendTransport.addEventListener('click', createRecvTransport)
-btnConnectRecvTransport.addEventListener('click', connectRecvTransport)
+btnRecvSendTransport.addEventListener('click', goConsume)
 },{"mediasoup-client":71,"socket.io-client":85}]},{},[100]);

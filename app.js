@@ -83,20 +83,29 @@ peers.on('connection', async (socket) => {
     console.log(socket.id, 'connected');
 
     socket.emit('connection-success', {
-        id: socket.id
+        socketId: socket.id,
+        existsProducer: producer ? true : false
     })
 
     socket.on('disconnect', () => {
         console.log(socket.id, 'disconnected');
     })
 
-    router = await worker.createRouter({ mediaCodecs})
+    socket.on('createRoom', async (callback) => {
+       if(router === undefined) {
+        router = await worker.createRouter({ mediaCodecs})
+        console.log('Router ID', router.id)
+       }
 
-    socket.on('getRtpCapabilities', (callback) => {
-        const rtpCapabilities = router.rtpCapabilities
-        // console.log('Server RTP Capabilities', rtpCapabilities)
-        callback({rtpCapabilities})
+       getRtpCapabilities(callback);
     })
+
+
+    const getRtpCapabilities = (callback) => {
+        const rtpCapabilities = router.rtpCapabilities;
+
+        callback({rtpCapabilities})
+    }
 
     socket.on('createWebRtcTransport', async ({sender}, callback) => {
         console.log("is this a sender request?", sender)
