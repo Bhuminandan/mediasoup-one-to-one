@@ -7,6 +7,7 @@ socket.on('connection-success', (data) => {
     console.log(data)
 })
 
+
 let device;
 let rtpCapabilities;
 let producerTransport;
